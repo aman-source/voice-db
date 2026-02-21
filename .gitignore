@@ -1,0 +1,28 @@
+# Environment variables (NEVER commit secrets)
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
+# Pretrained model binaries (large files)
+pretrained_models/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Claude settings
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

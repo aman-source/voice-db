@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+torch
+torchaudio
+speechbrain
+librosa
+soundfile
+faiss-cpu
+numpy
+python-multipart
+qdrant-client
+python-dotenv
+SpeechRecognition

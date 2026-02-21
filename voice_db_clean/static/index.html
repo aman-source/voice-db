@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Identification</title>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f7fb;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 28px 32px;
+      width: 380px;
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2d3748;
+    }
+
+    .section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background: #f9fafc;
+      border: 1px solid #e5eaf2;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #4a5568;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e0;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    input:focus {
+      border-color: #7f9cf5;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .register-btn {
+      background: #7f9cf5;
+      color: #fff;
+    }
+
+    .register-btn:hover {
+      background: #6b8af0;
+    }
+
+    .match-btn {
+      background: #68d391;
+      color: #fff;
+    }
+
+    .match-btn:hover {
+      background: #5fc389;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 13px;
+      color: #4a5568;
+      min-height: 18px;
+      text-align: center;
+    }
+
+    #result {
+      margin-top: 10px;
+      font-size: 13px;
+      background: #edf2f7;
+      padding: 10px;
+      border-radius: 6px;
+      word-break: break-word;
+      color: #2d3748;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #cbd5e0;
+      border-top: 2px solid #7f9cf5;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Voice Matching System</h2>
+
+  <!-- Register Section -->
+  <div class="section">
+    <div class="section-title">Register Name</div>
+    <input
+      type="text"
+      id="name"
+      placeholder="Enter your name"
+    />
+    <button class="register-btn" onclick="startRegister()">Register</button>
+  </div>
+
+  <!-- Match Section -->
+  <div class="section">
+    <div class="section-title">Verify Name</div>
+    <button class="match-btn" onclick="startMatch()">Verify</button>
+  </div>
+
+  <p id="status"></p>
+  <div id="result"></div>
+</div>
+
+<script>
+let mediaRecorder;
+let audioChunks = [];
+
+/* -------- Record Audio -------- */
+async function recordAudio(durationMs) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.start();
+
+  return new Promise(resolve => {
+    setTimeout(() => {
+      mediaRecorder.stop();
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const wavBlob = await webmToWav(webmBlob);
+        resolve(wavBlob);
+      };
+    }, durationMs);
+  });
+}
+
+/* -------- Convert WebM → WAV -------- */
+async function webmToWav(webmBlob) {
+  const audioContext = new AudioContext();
+  const arrayBuffer = await webmBlob.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  const wavBuffer = audioBufferToWav(audioBuffer);
+  return new Blob([wavBuffer], { type: "audio/wav" });
+}
+
+/* -------- WAV Encoder -------- */
+function audioBufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const length = buffer.length * numChannels * 2;
+  const wav = new ArrayBuffer(44 + length);
+  const view = new DataView(wav);
+
+  let offset = 0;
+  const writeString = s => {
+    for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i));
+  };
+
+  writeString("RIFF");
+  view.setUint32(offset, 36 + length, true); offset += 4;
+  writeString("WAVEfmt ");
+  view.setUint32(offset, 16, true); offset += 4;
+  view.setUint16(offset, 1, true); offset += 2;
+  view.setUint16(offset, numChannels, true); offset += 2;
+  view.setUint32(offset, sampleRate, true); offset += 4;
+  view.setUint32(offset, sampleRate * numChannels * 2, true); offset += 4;
+  view.setUint16(offset, numChannels * 2, true); offset += 2;
+  view.setUint16(offset, 16, true); offset += 2;
+  writeString("data");
+  view.setUint32(offset, length, true); offset += 4;
+
+  for (let ch = 0; ch < numChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) {
+      let sample = Math.max(-1, Math.min(1, data[i]));
+      view.setInt16(offset, sample * 0x7fff, true);
+      offset += 2;
+    }
+  }
+  return wav;
+}
+
+/* -------- Register (Say name 3 times) -------- */
+async function startRegister() {
+  const name = document.getElementById("name").value;
+  if (!name) return alert("Enter your name");
+
+  document.getElementById("status").innerText =
+    "Say '" + name + " " + name + " " + name + "'... Recording (4 sec)";
+
+  const audioBlob = await recordAudio(4000);
+
+  document.getElementById("status").innerText =
+    "Processing voice...";
+
+  const formData = new FormData();
+  formData.append("person_name", name);
+  formData.append("audio", audioBlob, "voice.wav");
+
+  const res = await fetch("/voice/register", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await res.json();
+  document.getElementById("status").innerText = "";
+  document.getElementById("result").innerText =
+    "Registration: " + JSON.stringify(data, null, 2);
+}
+
+/* -------- Match -------- */
+async function startMatch() {
+  document.getElementById("result").innerText = "";
+  document.getElementById("status").innerText =
+    "Speak your transaction sentence... Recording (5 sec)";
+
+  const audioBlob = await recordAudio(5000);
+
+  // Show loading spinner
+  document.getElementById("status").innerHTML =
+    '<span class="loading"></span> Processing voice...';
+
+  const formData = new FormData();
+  formData.append("audio", audioBlob, "voice.wav");
+
+  try {
+    const res = await fetch("/voice/verify-transaction", {
+      method: "POST",
+      body: formData
+    });
+
+    // Read raw response first
+    const text = await res.text();
+    console.log("RAW RESPONSE:", text);
+
+    // Try to parse JSON safely
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      document.getElementById("status").innerText = "";
+      document.getElementById("result").innerText =
+        "❌ Server returned invalid JSON.\n\n" + text;
+      return;
+    }
+
+    // Clear status and show result
+    document.getElementById("status").innerText = "";
+    document.getElementById("result").innerText =
+      "Result:\n" + JSON.stringify(data, null, 2);
+
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+    document.getElementById("status").innerText = "";
+    document.getElementById("result").innerText =
+      "❌ Error contacting server.";
+  }
+}
+</script>
+
+</body>
+</html>
