@@ -3,35 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <title>Voice Identification</title>
-
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
       background: #f4f7fb;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding: 30px 16px;
       margin: 0;
+      box-sizing: border-box;
     }
 
     .container {
       background: #ffffff;
       padding: 28px 32px;
-      width: 380px;
+      width: 100%;
+      max-width: 520px;
       border-radius: 12px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+      box-sizing: border-box;
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 20px;
+      margin: 0 0 22px;
       color: #2d3748;
     }
 
     .section {
       margin-bottom: 20px;
-      padding: 15px;
+      padding: 16px;
       border-radius: 8px;
       background: #f9fafc;
       border: 1px solid #e5eaf2;
@@ -39,69 +42,103 @@
 
     .section-title {
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 10px;
       color: #4a5568;
     }
 
-    input {
+    .hint {
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 10px;
+      line-height: 1.7;
+    }
+
+    input[type="text"] {
       width: 100%;
-      padding: 10px 12px;
+      padding: 9px 12px;
       font-size: 14px;
       border-radius: 6px;
       border: 1px solid #cbd5e0;
       outline: none;
       margin-bottom: 10px;
+      box-sizing: border-box;
     }
 
-    input:focus {
-      border-color: #7f9cf5;
-    }
+    input[type="text"]:focus { border-color: #7f9cf5; }
 
     button {
       width: 100%;
       padding: 10px;
-      font-size: 15px;
+      font-size: 14px;
       border-radius: 6px;
       border: none;
       cursor: pointer;
       transition: background 0.2s ease;
+      margin-bottom: 8px;
     }
 
-    .register-btn {
-      background: #7f9cf5;
-      color: #fff;
-    }
+    button:last-of-type { margin-bottom: 0; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    .register-btn:hover {
-      background: #6b8af0;
-    }
+    .btn-secondary { background: #5a7de0; color: #fff; }
+    .btn-secondary:hover:not(:disabled) { background: #4a6dd0; }
 
-    .match-btn {
-      background: #68d391;
-      color: #fff;
-    }
+    .btn-green { background: #68d391; color: #fff; }
+    .btn-green:hover:not(:disabled) { background: #5fc389; }
 
-    .match-btn:hover {
-      background: #5fc389;
-    }
-
-    #status {
-      margin-top: 15px;
-      font-size: 13px;
-      color: #4a5568;
-      min-height: 18px;
+    .reg-counter {
+      font-size: 12px;
+      color: #718096;
       text-align: center;
+      margin-top: 8px;
     }
+    .reg-counter span { font-weight: 700; color: #7f9cf5; }
 
-    #result {
+    .section-status {
       margin-top: 10px;
       font-size: 13px;
+      color: #2d3748;
+      min-height: 18px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .prompt-box {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: #ebf4ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2b6cb0;
+      letter-spacing: 0.01em;
+    }
+
+    .section-result {
+      margin-top: 10px;
+      font-size: 12.5px;
       background: #edf2f7;
       padding: 10px;
       border-radius: 6px;
       word-break: break-word;
+      overflow-wrap: break-word;
       color: #2d3748;
+      overflow: hidden;
+      display: none;
+    }
+
+    .section-result.visible { display: block; }
+
+    .section-result pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      font-size: 12px;
+      overflow-x: auto;
     }
 
     .loading {
@@ -117,188 +154,266 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
+      0%   { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    .matched    { color: #276749; font-weight: 700; }
+    .notmatched { color: #c53030; font-weight: 700; }
   </style>
 </head>
 
 <body>
-
 <div class="container">
   <h2>Voice Matching System</h2>
 
-  <!-- Register Section -->
+  <!-- ── Register Section ─────────────────────────────── -->
   <div class="section">
-    <div class="section-title">Register Name</div>
-    <input
-      type="text"
-      id="name"
-      placeholder="Enter your name"
-    />
-    <button class="register-btn" onclick="startRegister()">Register</button>
+    <div class="section-title">Register Voice</div>
+    <div class="hint">
+      Enter your name and click <b>Register (3 samples)</b>.<br>
+    </div>
+    <input type="text" id="reg-name" placeholder="Enter your name" />
+    <button class="btn-secondary" id="reg-multi-btn" onclick="startRegisterMulti()">
+      Register (3 samples — recommended)
+    </button>
+    <div class="reg-counter">Registered: <span id="reg-count">0</span> time(s)</div>
+    <div class="section-status" id="reg-status"></div>
+    <div class="section-result" id="reg-result"></div>
   </div>
 
-  <!-- Match Section -->
+  <!-- ── Verify Section ────────────────────────────────── -->
   <div class="section">
-    <div class="section-title">Verify Name</div>
-    <button class="match-btn" onclick="startMatch()">Verify</button>
+    <div class="section-title">Verify Voice</div>
+    <div class="hint">
+      Speak any sentence clearly for <b>6 seconds</b> — your name,
+      a transaction sentence, or anything else. The system will identify you.
+    </div>
+    <button class="btn-green" id="verify-btn" onclick="startVerify()">
+      Verify Voice
+    </button>
+    <div class="section-status" id="verify-status"></div>
+    <div class="section-result" id="verify-result"></div>
   </div>
-
-  <p id="status"></p>
-  <div id="result"></div>
 </div>
 
 <script>
-let mediaRecorder;
-let audioChunks = [];
+let regCount = 0;
 
-/* -------- Record Audio -------- */
+const SENTENCE_POOL = [
+  "I am making a payment right now",
+  "Please transfer five hundred to the vendor",
+  "The quick brown fox jumps over the lazy dog",
+  "My voice is my unique identifier",
+  "I authorize this financial transaction",
+  "Send two thousand rupees to the account",
+  "I confirm that I am the account holder",
+  "Transfer one thousand to the recipient",
+  "I want to complete this payment securely",
+  "Please process my voice verification now",
+  "I am speaking this sentence for registration",
+  "Authenticate my voice for this transaction",
+  "I need to send money to someone today",
+  "Complete the transfer of five hundred",
+  "I confirm this is my voice signature",
+  "My account is linked to this voice",
+  "I am the authorized user of this account",
+  "Please verify my voice and proceed",
+];
+
+function pickTwo(pool) {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return [shuffled[0], shuffled[1]];
+}
+
 async function recordAudio(durationMs) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const recorder = new MediaRecorder(stream);
+  const chunks   = [];
 
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-  mediaRecorder.start();
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.start();
 
   return new Promise(resolve => {
     setTimeout(() => {
-      mediaRecorder.stop();
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(track => track.stop());
-        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
-        const wavBlob = await webmToWav(webmBlob);
+      recorder.stop();
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const webmBlob = new Blob(chunks, { type: "audio/webm" });
+        const wavBlob  = await webmToWav(webmBlob);
         resolve(wavBlob);
       };
     }, durationMs);
   });
 }
 
-/* -------- Convert WebM → WAV -------- */
 async function webmToWav(webmBlob) {
-  const audioContext = new AudioContext();
+  const ctx         = new AudioContext();
   const arrayBuffer = await webmBlob.arrayBuffer();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  const wavBuffer = audioBufferToWav(audioBuffer);
-  return new Blob([wavBuffer], { type: "audio/wav" });
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  return new Blob([audioBufferToWav(audioBuffer)], { type: "audio/wav" });
 }
 
-/* -------- WAV Encoder -------- */
 function audioBufferToWav(buffer) {
   const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const length = buffer.length * numChannels * 2;
-  const wav = new ArrayBuffer(44 + length);
-  const view = new DataView(wav);
-
+  const sampleRate  = buffer.sampleRate;
+  const length      = buffer.length * numChannels * 2;
+  const wav         = new ArrayBuffer(44 + length);
+  const view        = new DataView(wav);
   let offset = 0;
-  const writeString = s => {
-    for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i));
-  };
+
+  const writeString = s => { for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i)); };
 
   writeString("RIFF");
   view.setUint32(offset, 36 + length, true); offset += 4;
   writeString("WAVEfmt ");
-  view.setUint32(offset, 16, true); offset += 4;
-  view.setUint16(offset, 1, true); offset += 2;
-  view.setUint16(offset, numChannels, true); offset += 2;
-  view.setUint32(offset, sampleRate, true); offset += 4;
+  view.setUint32(offset, 16,           true); offset += 4;
+  view.setUint16(offset, 1,            true); offset += 2;
+  view.setUint16(offset, numChannels,  true); offset += 2;
+  view.setUint32(offset, sampleRate,   true); offset += 4;
   view.setUint32(offset, sampleRate * numChannels * 2, true); offset += 4;
   view.setUint16(offset, numChannels * 2, true); offset += 2;
-  view.setUint16(offset, 16, true); offset += 2;
+  view.setUint16(offset, 16,           true); offset += 2;
   writeString("data");
   view.setUint32(offset, length, true); offset += 4;
 
   for (let ch = 0; ch < numChannels; ch++) {
     const data = buffer.getChannelData(ch);
     for (let i = 0; i < data.length; i++) {
-      let sample = Math.max(-1, Math.min(1, data[i]));
-      view.setInt16(offset, sample * 0x7fff, true);
+      const s = Math.max(-1, Math.min(1, data[i]));
+      view.setInt16(offset, s * 0x7fff, true);
       offset += 2;
     }
   }
   return wav;
 }
 
-/* -------- Register (Say name 3 times) -------- */
-async function startRegister() {
-  const name = document.getElementById("name").value;
-  if (!name) return alert("Enter your name");
+async function startRegisterMulti() {
+  const name = document.getElementById("reg-name").value.trim();
+  if (!name) return alert("Enter your name first.");
 
-  document.getElementById("status").innerText =
-    "Say '" + name + " " + name + " " + name + "'... Recording (4 sec)";
+  setButtons(true);
+  clearResult("reg-result");
 
-  const audioBlob = await recordAudio(4000);
+  const [sent1, sent2] = pickTwo(SENTENCE_POOL);
 
-  document.getElementById("status").innerText =
-    "Processing voice...";
+  const steps = [
+    { label: "Sample 1 of 3", prompt: `Say your name ${name.toUpperCase()} 3 to 4 times`, ms: 5000 },
+    { label: "Sample 2 of 3", prompt: sent1, ms: 6000 },
+    { label: "Sample 3 of 3", prompt: sent2, ms: 6000 },
+  ];
 
-  const formData = new FormData();
-  formData.append("person_name", name);
-  formData.append("audio", audioBlob, "voice.wav");
+  const blobs = [];
 
-  const res = await fetch("/voice/register", {
-    method: "POST",
-    body: formData
-  });
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    setStatus("reg-status",
+      `<b>${step.label}</b> — Recording (${step.ms / 1000} sec)<br>` +
+      `<span class="prompt-box">${step.prompt}</span>`
+    );
+    const blob = await recordAudio(step.ms);
+    blobs.push(blob);
 
-  const data = await res.json();
-  document.getElementById("status").innerText = "";
-  document.getElementById("result").innerText =
-    "Registration: " + JSON.stringify(data, null, 2);
-}
+    if (i < steps.length - 1) {
+      setStatus("reg-status", `${step.label} done ✓ &nbsp; Get ready for the next sample...`);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
 
-/* -------- Match -------- */
-async function startMatch() {
-  document.getElementById("result").innerText = "";
-  document.getElementById("status").innerText =
-    "Speak your transaction sentence... Recording (5 sec)";
+  setStatus("reg-status", '<span class="loading"></span> Uploading 3 samples...');
 
-  const audioBlob = await recordAudio(5000);
-
-  // Show loading spinner
-  document.getElementById("status").innerHTML =
-    '<span class="loading"></span> Processing voice...';
-
-  const formData = new FormData();
-  formData.append("audio", audioBlob, "voice.wav");
+  const form = new FormData();
+  form.append("person_name", name);
+  form.append("audio1", blobs[0], "voice1.wav");
+  form.append("audio2", blobs[1], "voice2.wav");
+  form.append("audio3", blobs[2], "voice3.wav");
 
   try {
-    const res = await fetch("/voice/verify-transaction", {
-      method: "POST",
-      body: formData
-    });
-
-    // Read raw response first
-    const text = await res.text();
-    console.log("RAW RESPONSE:", text);
-
-    // Try to parse JSON safely
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      document.getElementById("status").innerText = "";
-      document.getElementById("result").innerText =
-        "❌ Server returned invalid JSON.\n\n" + text;
-      return;
-    }
-
-    // Clear status and show result
-    document.getElementById("status").innerText = "";
-    document.getElementById("result").innerText =
-      "Result:\n" + JSON.stringify(data, null, 2);
-
+    const res  = await fetch("/voice/register-multi", { method: "POST", body: form });
+    const data = await res.json();
+    regCount++;
+    document.getElementById("reg-count").textContent = regCount;
+    setStatus("reg-status", "");
+    showResult("reg-result", `Registered "${name}" with 3 samples\n\n` + JSON.stringify(data, null, 2));
   } catch (err) {
-    console.error("❌ Fetch error:", err);
-    document.getElementById("status").innerText = "";
-    document.getElementById("result").innerText =
-      "❌ Error contacting server.";
+    setStatus("reg-status", "");
+    showResult("reg-result", "Error: " + err.message);
+  } finally {
+    setButtons(false);
   }
 }
-</script>
 
+async function startVerify() {
+  setStatus("verify-status", "Recording (6 sec)... speak now");
+  setButtons(true);
+  clearResult("verify-result");
+
+  const audioBlob = await recordAudio(6000);
+  setStatus("verify-status", '<span class="loading"></span> Verifying...');
+
+  const form = new FormData();
+  form.append("audio", audioBlob, "voice.wav");
+
+  try {
+    const res  = await fetch("/voice/verify-transaction", { method: "POST", body: form });
+    const data = await res.json();
+    setStatus("verify-status", "");
+
+    const isMatched = data.voice_status === "MATCHED";
+    const tag = isMatched
+      ? `<span class="matched">MATCHED ✓</span>`
+      : `<span class="notmatched">${data.voice_status} ✗</span>`;
+
+    const speaker      = data.speaker || "unknown";
+    const senderLine   = buildNameLine("Sender",   data.sender);
+    const receiverLine = buildNameLine("Receiver", data.receiver);
+
+    const el = document.getElementById("verify-result");
+    el.innerHTML =
+      `<b>Speaker: "${speaker}"</b> — ${tag}<br>` +
+      `${senderLine}${receiverLine}` +
+      (data.amount     ? `<b>Amount:</b> ${data.amount}<br>` : "") +
+      (data.transcript ? `<b>Transcript:</b> ${data.transcript}<br>` : "") +
+      `<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+    el.classList.add("visible");
+
+  } catch (err) {
+    setStatus("verify-status", "");
+    showResult("verify-result", "Error: " + err.message);
+  } finally {
+    setButtons(false);
+  }
+}
+
+function buildNameLine(label, obj) {
+  if (!obj || !obj.spoken_as) return "";
+  const status = obj.db_status === "found"
+    ? `<span style="color:#276749;font-weight:700">found in DB ✓</span>`
+    : `<span style="color:#c53030;font-weight:700">not found in DB ✗</span>`;
+  const display = obj.name || obj.spoken_as;
+  return `<b>${label}:</b> "${display}" — ${status}<br>`;
+}
+
+function setStatus(id, html) {
+  document.getElementById(id).innerHTML = html;
+}
+
+function showResult(id, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.add("visible");
+}
+
+function clearResult(id) {
+  const el = document.getElementById(id);
+  el.innerHTML = "";
+  el.classList.remove("visible");
+}
+
+function setButtons(disabled) {
+  document.getElementById("reg-multi-btn").disabled = disabled;
+  document.getElementById("verify-btn").disabled    = disabled;
+}
+</script>
 </body>
 </html>

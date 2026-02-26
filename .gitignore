@@ -2,6 +2,10 @@
 .env
 .env.*
 
+# GCP service account credentials (NEVER commit)
+credentials/
+*.json
+
 # Python cache
 __pycache__/
 *.py[cod]

@@ -1,23 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, Form
-import numpy as np
 from app.services.embedding import generate_embedding_from_bytes
-from app.services.qdrant_store import add_embedding
+from app.services.gcp_vector_store import add_embedding
+from app.services.gcs_storage import upload_registration_audio
 
 router = APIRouter(prefix="/voice")
-
-
-@router.post("/register")
-async def register_voice(
-    person_name: str = Form(...),
-    audio: UploadFile = File(...)
-):
-    """Single sample registration (legacy)"""
-    audio_bytes = await audio.read()
-    embedding = generate_embedding_from_bytes(audio_bytes)
-
-    add_embedding(embedding, person_name)
-
-    return {"status": "registered", "person_name": person_name}
 
 
 @router.post("/register-multi")
@@ -28,28 +14,33 @@ async def register_voice_multi(
     audio3: UploadFile = File(...)
 ):
     """
-    Multi-sample registration (industrial best practice).
-    Records 3 voice samples and stores the averaged embedding.
+    Multi-sample registration.
+    Stores each of the 3 voice samples individually so the centroid
+    is computed from 3 real vectors for maximum accuracy.
     """
-    # Read all audio samples
     audio_bytes1 = await audio1.read()
     audio_bytes2 = await audio2.read()
     audio_bytes3 = await audio3.read()
 
-    # Generate embeddings for each sample
+    # Upload to GCS for audit trail (non-fatal)
+    for audio_bytes in [audio_bytes1, audio_bytes2, audio_bytes3]:
+        try:
+            upload_registration_audio(audio_bytes, person_name)
+        except Exception as e:
+            print(f"[WARN] GCS upload failed (non-fatal): {e}")
+
+    # Store each embedding individually — centroid auto-computed after each upsert
     emb1 = generate_embedding_from_bytes(audio_bytes1)
     emb2 = generate_embedding_from_bytes(audio_bytes2)
     emb3 = generate_embedding_from_bytes(audio_bytes3)
 
-    # Average the embeddings (industrial best practice)
-    averaged_embedding = np.mean([emb1, emb2, emb3], axis=0)
-
-    # Store the averaged embedding
-    add_embedding(averaged_embedding, person_name)
+    add_embedding(emb1, person_name)
+    add_embedding(emb2, person_name)
+    add_embedding(emb3, person_name)
 
     return {
         "status": "registered",
         "person_name": person_name,
         "samples_used": 3,
-        "method": "averaged_embedding"
+        "method": "individual_embeddings_with_centroid"
     }
