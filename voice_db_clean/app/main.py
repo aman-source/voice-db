@@ -30,7 +30,12 @@ def startup():
     region = os.getenv("GCP_REGION", "us-central1").strip()
     aiplatform.init(project=project_id, location=region)
     print(f"[OK] Vertex AI initialized: project={project_id}, region={region}")
-    init_gcp()
+    try:
+        init_gcp()
+    except Exception as e:
+        print(f"[WARN] GCP initialization failed: {e}")
+        print("[WARN] Server started in degraded mode — GCP-dependent endpoints will not work.")
+
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

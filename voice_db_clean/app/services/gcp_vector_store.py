@@ -40,13 +40,17 @@ def init_gcp():
     _db = firestore.Client(project=project_id, database="(default)")
     print("[OK] Firestore client initialized")
 
-    _index_endpoint = aiplatform.MatchingEngineIndexEndpoint(
-        index_endpoint_name=os.getenv("GCP_INDEX_ENDPOINT_ID")
-    )
-    _index = aiplatform.MatchingEngineIndex(
-        index_name=os.getenv("GCP_INDEX_ID")
-    )
-    print("[OK] Vertex AI Vector Search initialized")
+    try:
+        _index_endpoint = aiplatform.MatchingEngineIndexEndpoint(
+            index_endpoint_name=os.getenv("GCP_INDEX_ENDPOINT_ID")
+        )
+        _index = aiplatform.MatchingEngineIndex(
+            index_name=os.getenv("GCP_INDEX_ID")
+        )
+        print("[OK] Vertex AI Vector Search initialized")
+    except Exception as e:
+        print(f"[WARN] Vertex AI Vector Search unavailable (network issue?): {e}")
+        print("[WARN] Server will start but vector search endpoints will fail until GCP is reachable.")
 
 
 def normalize(vec: np.ndarray) -> np.ndarray:

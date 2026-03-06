@@ -49,10 +49,25 @@ cd voice-db
 
 ### 2. Install dependencies
 
+**Step 1 — Install PyTorch first** (choose based on your hardware):
+
+GPU (CUDA 11.8):
+```bash
+pip install torch==2.4.1+cu118 torchaudio==2.4.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+```
+
+CPU only:
+```bash
+pip install torch==2.4.1 torchaudio==2.4.1
+```
+
+**Step 2 — Install the rest:**
 ```bash
 cd voice_db_clean
 pip install -r requirements.txt
 ```
+
+> Requires Python 3.11. Not tested on 3.12+.
 
 ### 3. Add credentials
 
